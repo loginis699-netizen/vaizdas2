@@ -163,47 +163,44 @@ def hourly_slice(data, now, n=12):
 
 def draw_hourly(d, f, rows, y0):
     """Temperature line + precipitation-probability bars for the next hours."""
-    x_l, x_r = 55, W - 55
+    x_l, x_r = 40, W - 40
     n = len(rows)
     step = (x_r - x_l) / max(n - 1, 1)
     xs = [x_l + i * step for i in range(n)]
     temps = [r[1] for r in rows]
     tmin, tmax = min(temps), max(temps)
     span = max(tmax - tmin, 2.0)
-    ty0, ty1 = y0 + 50, y0 + 98         # temperature band (top..bottom)
+    ty0, ty1 = y0 + 64, y0 + 112        # temperature band (top..bottom)
     ys = [ty1 - (t - tmin) / span * (ty1 - ty0) for t in temps]
 
-    center(d, "Kitos valandos: linija \u2013 temperatūra, stulpeliai \u2013 lietaus tikimybė", y0, f(15))
+    center(d, "Linija – temperatūra, stulpeliai – lietus", y0, f(18))
 
-    # precipitation bars (base line at y0+140)
-    base, maxh = y0 + 140, 36
-    bw = 22
+    base, maxh = y0 + 164, 40
+    bw = 28
     for x, (_, _, pp) in zip(xs, rows):
         h = int(pp / 100 * maxh)
-        d.rectangle([x - bw // 2, base - maxh, x + bw // 2, base], outline=200)
+        d.rectangle([x - bw // 2, base - maxh, x + bw // 2, base], outline=190)
         if h > 0:
-            d.rectangle([x - bw // 2, base - h, x + bw // 2, base], fill=70)
+            d.rectangle([x - bw // 2, base - h, x + bw // 2, base], fill=60)
     d.line([x_l - 14, base, x_r + 14, base], fill=0, width=2)
 
-    # temperature line
-    d.line(list(zip(xs, ys)), fill=0, width=3)
+    d.line(list(zip(xs, ys)), fill=0, width=4)
     for x, y in zip(xs, ys):
-        d.ellipse([x - 4, y - 4, x + 4, y + 4], fill=0)
+        d.ellipse([x - 5, y - 5, x + 5, y + 5], fill=0)
     for i, (x, y, t) in enumerate(zip(xs, ys, temps)):
         if i % 2 == 0:
-            txt = f"{t:+.0f}\u00b0"
-            w = d.textlength(txt, font=f(17, True))
-            d.text((x - w / 2, y - 27), txt, font=f(17, True), fill=0)
+            txt = f"{t:+.0f}°"
+            w = d.textlength(txt, font=f(22, True))
+            d.text((x - w / 2, y - 33), txt, font=f(22, True), fill=0)
 
-    # hour labels + % under bars
     for i, (x, (t, _, pp)) in enumerate(zip(xs, rows)):
         lab = f"{t.hour:02d}"
-        w = d.textlength(lab, font=f(16, True))
-        d.text((x - w / 2, base + 4), lab, font=f(16, True), fill=0)
+        w = d.textlength(lab, font=f(20, True))
+        d.text((x - w / 2, base + 4), lab, font=f(20, True), fill=0)
         if i % 2 == 0 and pp >= 10:
             pt = f"{pp}%"
-            w = d.textlength(pt, font=f(13))
-            d.text((x - w / 2, base + 22), pt, font=f(13), fill=0)
+            w = d.textlength(pt, font=f(16))
+            d.text((x - w / 2, base + 28), pt, font=f(16), fill=0)
 
 
 def render(data, now, clock=True):
@@ -211,50 +208,49 @@ def render(data, now, clock=True):
     d = ImageDraw.Draw(img)
     f = lambda sz, b=False: ImageFont.truetype(FONT_B if b else FONT, sz)
 
-    # Header: date (no big clock when hosted statically)
-    if clock:
-        center(d, now.strftime("%H:%M"), 0, f(100, True))
-        center(d, WEEKDAYS[now.weekday()], 112, f(30, True))
-        center(d, f"{now.year} m. {MONTHS[now.month - 1]} {now.day} d.", 148, f(22))
-    else:
-        center(d, str(now.day), -6, f(110, True))
-        center(d, WEEKDAYS[now.weekday()], 112, f(30, True))
-        center(d, f"{now.year} m. {MONTHS[now.month - 1]}", 148, f(22))
-        center(d, f"atnaujinta {now.strftime('%H:%M')}", 178, f(14))
-    d.line([40, 202, W - 40, 202], fill=0, width=3)
+    # Header: big day number on the left, weekday / month / update time on the right
+    day_txt = str(now.day) if not clock else now.strftime("%H:%M")
+    big = f(150, True)
+    d.text((34, -22), day_txt, font=big, fill=0)
+    xr = 34 + int(d.textlength(day_txt, font=big)) + 34
+    d.text((xr, 14), WEEKDAYS[now.weekday()], font=f(40, True), fill=0)
+    d.text((xr, 70), f"{now.year} m.", font=f(30), fill=0)
+    d.text((xr, 104), MONTHS[now.month - 1], font=f(30), fill=0)
+    d.text((xr, 142), f"atnaujinta {now.strftime('%H:%M')}", font=f(20), fill=0)
+    d.line([30, 174, W - 30, 174], fill=0, width=3)
 
     # Current weather
     cur = data["current"]
     text, kind = wmo(cur["weather_code"])
-    icon(d, kind, 115, 275, 100)
-    d.text((215, 215), f"{cur['temperature_2m']:+.0f}\u00b0", font=f(80, True), fill=0)
-    d.text((217, 308), text, font=f(26), fill=0)
-    d.text((217, 344), f"Jaučiasi kaip {cur['apparent_temperature']:+.0f}\u00b0  \u00b7  vėjas {cur['wind_speed_10m']:.0f} km/h",
-           font=f(16), fill=0)
-    d.line([40, 380, W - 40, 380], fill=0, width=3)
+    icon(d, kind, 100, 250, 130)
+    d.text((196, 178), f"{cur['temperature_2m']:+.0f}°", font=f(104, True), fill=0)
+    d.text((200, 296), text, font=f(34), fill=0)
+    center(d, f"Jaučiasi {cur['apparent_temperature']:+.0f}°   ·   vėjas {cur['wind_speed_10m']:.0f} km/h",
+           340, f(26, True))
+    d.line([30, 382, W - 30, 382], fill=0, width=3)
 
     # Hourly forecast
     draw_hourly(d, f, hourly_slice(data, now), 392)
-    d.line([40, 590, W - 40, 590], fill=0, width=3)
+    d.line([30, 608, W - 30, 608], fill=0, width=3)
 
     # 3-day forecast
     day = data["daily"]
-    colw = (W - 80) // 3
+    colw = (W - 60) // 3
     for i in range(1, 4):
-        x0 = 40 + (i - 1) * colw
+        x0 = 30 + (i - 1) * colw
         x1 = x0 + colw
         dt = datetime.fromisoformat(day["time"][i])
         t, k = wmo(day["weather_code"][i])
-        center(d, WEEKDAYS_SHORT[dt.weekday()] + f" {dt.day}", 598, f(22, True), x0=x0, x1=x1)
-        icon(d, k, (x0 + x1) // 2, 650, 62)
-        center(d, f"{day['temperature_2m_max'][i]:+.0f}\u00b0 / {day['temperature_2m_min'][i]:+.0f}\u00b0",
-               690, f(20, True), x0=x0, x1=x1)
-        center(d, t, 718, f(15), x0=x0, x1=x1)
+        center(d, WEEKDAYS_SHORT[dt.weekday()] + f" {dt.day}", 612, f(26, True), x0=x0, x1=x1)
+        icon(d, k, (x0 + x1) // 2, 674, 56)
+        center(d, f"{day['temperature_2m_max'][i]:+.0f}° / {day['temperature_2m_min'][i]:+.0f}°",
+               712, f(24, True), x0=x0, x1=x1)
+        center(d, t, 742, f(19), x0=x0, x1=x1)
 
-    d.line([40, 745, W - 40, 745], fill=0, width=3)
+    d.line([30, 771, W - 30, 771], fill=0, width=3)
     sr = day["sunrise"][0][11:16]
     ss = day["sunset"][0][11:16]
-    center(d, f"Saulėtekis {sr}   \u00b7   Saulėlydis {ss}", 761, f(17))
+    center(d, f"Saulėtekis {sr}   ·   Saulėlydis {ss}", 775, f(21))
     return img
 
 
