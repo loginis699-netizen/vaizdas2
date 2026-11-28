@@ -211,7 +211,7 @@ def render(data, now, clock=True):
     # Header: big day number on the left, weekday / month / update time on the right
     day_txt = str(now.day) if not clock else now.strftime("%H:%M")
     big = f(150, True)
-    d.text((34, -22), day_txt, font=big, fill=0)
+    d.text((34, 1), day_txt, font=big, fill=0)
     xr = 34 + int(d.textlength(day_txt, font=big)) + 34
     d.text((xr, 14), WEEKDAYS[now.weekday()], font=f(40, True), fill=0)
     d.text((xr, 70), f"{now.year} m.", font=f(30), fill=0)
